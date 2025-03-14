@@ -88,9 +88,6 @@ module.exports = {
         }, time)
       }
 
-      if (m.isBaileys || m.chat.endsWith('broadcast')) {
-        return;
-      }
       let blockList = await conn.fetchBlocklist()
       if (blockList?.includes(m.sender)) return
       m.exp += Math.ceil(Math.random() * 10)
@@ -154,18 +151,28 @@ module.exports = {
       }
       
       for (let name in global.plugins) {
-        let plugin = global.plugins[name]
-        if (!plugin) continue
-        if (plugin.disabled) continue
-        if (typeof plugin.all === 'function') {
+        var plugin;
+        if (typeof plugins[name].jihan === "function") {
+          var ai = plugins[name];
+          plugin = ai.jihan;
+          for (var prop in ai) {
+            if (prop !== "run") {
+              plugin[prop] = ai[prop];
+            }
+          }
+        } else {
+          plugin = plugins[name];
+        }
+        if (!plugin) continue;
+        if (plugin.disabled) continue;
+        if (typeof plugin.all === "function") {
           try {
-            await plugin.all.call(this, m, chatUpdate)
+            await plugin.all.call(this, m, chatUpdate);
           } catch (e) {
-            // if (typeof e === 'string') continue
-            console.error(e)
+            console.error(e);
           }
         }
-
+                  
         const str2Regex = str => str.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&')
         let _prefix = plugin.customPrefix ? plugin.customPrefix : conn.prefix ? conn.prefix : global.prefix
         let match = (_prefix instanceof RegExp ? // RegExp Mode?
@@ -182,7 +189,7 @@ module.exports = {
               [[[], new RegExp]]
         ).find(p => p[1])
         if (typeof plugin.before === 'function') if (await plugin.before.call(this, m, {
-          match, conn: this, participants, groupMetadata, user, bot, isROwner, isRAdmin, isAdmin, isBotAdmin, isPrems, users, setting, chatUpdate,
+          match, conn: this, participants, groupMetadata, user, Func, Key, bot, isROwner, isRAdmin, isAdmin, isBotAdmin, isPrems, users, setting, chatUpdate,
         })) continue
         if (typeof plugin !== 'function') continue
         if ((usedPrefix = (match[0] || '')[0])) {
@@ -192,20 +199,11 @@ module.exports = {
           let _args = noPrefix.trim().split` `.slice(1)
           let text = _args.join` `
           command = (command || '').toLowerCase()
-          let fail = plugin.fail || global.status // When failed
-          let isAccept = plugin.command instanceof RegExp ? // RegExp Mode?
-            plugin.command.test(command) :
-            Array.isArray(plugin.command) ? // Array?
-              plugin.command.some(cmd => cmd instanceof RegExp ? // RegExp in Array?
-                cmd.test(command) :
-                cmd === command
-              ) :
-              typeof plugin.command === 'string' ? // String?
-                plugin.command === command :
-                false
-
+          let fail = plugin.fail || global.status
+          let isAccept = plugin.command instanceof RegExp ? plugin.command.test(command) : Array.isArray(plugin.command) ? plugin.command.some(cmd => cmd instanceof RegExp ? cmd.test(command) : cmd === command) : typeof plugin.command === 'string' ? plugin.command === command : false
           if (!isAccept) continue
-
+                      
+          m.command = command;
           m.plugin = name;
           if (plugin && command) {
             users.hit += 1;
