@@ -1,66 +1,73 @@
-require("./config.js")
-if (process.argv.includes('--server')) require('./server')
-let cluster = require('cluster')
-let path = require('path')
-let fs = require('fs')
-let os = require('os')
-let package = require('./package.json')
-const CFonts = require('cfonts')
-const Readline = require('readline')
-const yargs = require('yargs/yargs')
-const chalk = require("chalk");
-const rl = Readline.createInterface(process.stdin, process.stdout)
+require("./config.js");
+const { spawn: spawn } = require('child_process');
+const path = require('path');
+const chalk = require('chalk');
+const CFonts = require('cfonts');
+const os = require('os');
+const { checkServerIP } require("./lib/acc")
+console.clear();
 
-CFonts.say(`${package.name}`, {
-  font: 'tiny',
-  align: 'left',
-  colors: ['system']
-})
-const tod = performance.now();
-console.log(`${chalk.yellow.bold('Informasi Server:')}`, `\n* ${chalk.blue('Kecepatan:')} ${chalk.magenta.bold((performance.now() - tod).toFixed(3))} ms`, `\n* ${chalk.red('Waktu Aktif:')} ${chalk.green.bold(Func.toTime(os.uptime() * 1000))}`, `\n* ${chalk.cyan('Total Memori:')} ${chalk.yellow.bold(Func.formatSize(os.totalmem() - os.freemem()))} / ${chalk.yellow.bold(Func.formatSize(os.totalmem()))}`, `\n* ${chalk.magenta('CPU:')} ${chalk.blue.bold(os.cpus()[0].model)} (${chalk.red.bold(os.cpus().length)} CORE)`, `\n* ${chalk.green('Rilis:')} ${chalk.cyan.bold(os.release())}`,`\n* ${chalk.yellow('Tipe:')} ${chalk.magenta.bold(os.type())}`);
+// Box styling dengan chalk
+const boxTop = chalk.cyan('╭──────────────────────────────────────────────╮');
+const boxBottom = chalk.cyan('╰──────────────────────────────────────────────╯');
 
-var isRunning = false
-/**
- * Start a js file
- * @param {String} file `path/to/file`
- */
-function start(file) {
-  if (isRunning) return
-  isRunning = true
-  let args = [path.join(__dirname, file), ...process.argv.slice(2)]
-  cluster.setupMaster({
-    exec: path.join(__dirname, file),
-    args: args.slice(1),
-  })
-  let p = cluster.fork()
-  p.on('message', data => {
-    console.log('[RECEIVED]', data)
-    switch (data) {
-      case 'reset':
-        p.process.kill()
-        isRunning = false
-        start.apply(this, arguments)
-        break
-      case 'uptime':
-        p.send(process.uptime())
-        break
+// Informasi Status
+console.log(boxTop);
+console.log(chalk.cyan.bold('          📡 Your Status Info:'));
+console.log(chalk.cyan(`  • Namebot: ${chalk.bold(require('./package.json').name || "N/A")}`));
+console.log(chalk.cyan(`  • Creator: ${chalk.bold(require('./package.json').author || "N/A")}`));
+console.log(chalk.cyan(`  • Type: ${chalk.bold("PLUGINS")}`));
+console.log(chalk.cyan(`  • Version: ${chalk.bold(require('./package.json').version)}`));
+console.log(chalk.cyan(`  • WhatsApps: ${chalk.bold("https://wa.me/6285133663664")}`));
+console.log(chalk.cyan(`  • Github: ${chalk.bold("https://github.com/dwi-merajah")}`));
+console.log(boxBottom);
+
+// Informasi Server
+console.log(boxTop);
+console.log(chalk.cyan.bold('          📂 Your Server Info:'));
+console.log(chalk.cyan(`  • Platform: ${chalk.bold(os.platform()) || "N/A"}`));
+console.log(chalk.cyan(`  • Architecture: ${chalk.bold(os.arch()) || "N/A"}`));
+console.log(chalk.cyan(`  • CPU Model: ${chalk.bold(os.cpus()[0]?.model || "N/A")}`)); // Perbaikan di sini
+console.log(chalk.cyan(`  • Total Memory: ${chalk.bold(Func.formatSize(os.totalmem())) || "N/A"}`));
+console.log(chalk.cyan(`  • Free Memory: ${chalk.bold(Func.formatSize(os.freemem())) || "N/A"}`));
+console.log(chalk.cyan(`  • Ip Address: ${chalk.bold(process.env.INTERNAL_IP || "N/A")}`));
+console.log(boxBottom);
+
+// Animasi teks dengan CFonts
+CFonts.say("Tamako", {
+  colors: ['cyan', 'blue'],
+  font: 'block',
+  align: 'center',
+  gradient: ['cyan', 'blue'],
+  transitionGradient: true,
+});
+
+function start() {
+  let args = [path.join(__dirname, 'main.js'), ...process.argv.slice(2)];
+  let p = spawn(process.argv[0], args, {
+    stdio: ['inherit', 'inherit', 'inherit', 'ipc']
+  }).on('message', data => {
+    try {
+      if (data === 'reset') {
+        console.log('Restarting...');
+        p.kill();
+      }
+    } catch (err) {
+      console.error('Error handling message:', err);
     }
-  })
-  p.on('exit', (_, code) => {
-    isRunning = false
-    console.error('Exited with code:', code)
-    if (code === 0) return
-    fs.watchFile(args[0], () => {
-      fs.unwatchFile(args[0])
-      start(file)
-    })
-  })
-  let opts = new Object(yargs(process.argv.slice(2)).exitProcess(false).parse())
-  if (!opts['test'])
-    if (!rl.listenerCount()) rl.on('line', line => {
-      p.emit('message', line.trim())
-    })
-  // console.log(p)
+  }).on('exit', code => {
+    console.error('Exited with code:', code);
+    if (code !== 0) {
+      console.log('Restarting process due to non-zero exit code...');
+      start();
+    }
+  }).on('error', err => {
+    console.error('Spawn error:', err);
+  });
 }
-
-start('main.js')
+const isAllowed = await checkServerIP();
+if (!isAllowed) { 
+  process.exit(1); 
+} else {
+  start();
+}
