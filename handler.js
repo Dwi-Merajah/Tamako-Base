@@ -75,7 +75,10 @@ module.exports = {
          })
       }
       
-      const isROwner =  [conn.decodeJid(conn.user.id).replace(/@.+/, ''), ...global.owner, ...setting.owners].map(v => v + '@s.whatsapp.net').includes(m.sender)
+      if (m.isBaileys) return
+      if (m.chat.endsWith('broadcast') || m.key.remoteJid.endsWith('broadcast')) return
+      
+      const isROwner =  [...global.owner, ...setting.owners].map(v => v + '@s.whatsapp.net').includes(m.sender)
       const isPrems = users && users.premium || isROwner
 
       if (opts['queque'] && m.text && !isPrems) {
@@ -88,8 +91,6 @@ module.exports = {
         }, time)
       }
 
-      let blockList = await conn.fetchBlocklist()
-      if (blockList?.includes(m.sender)) return
       m.exp += Math.ceil(Math.random() * 10)
 
       let usedPrefix
@@ -175,21 +176,12 @@ module.exports = {
                   
         const str2Regex = str => str.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&')
         let _prefix = plugin.customPrefix ? plugin.customPrefix : conn.prefix ? conn.prefix : global.prefix
-        let match = (_prefix instanceof RegExp ? // RegExp Mode?
-          [[_prefix.exec(m.text), _prefix]] :
-          Array.isArray(_prefix) ? // Array?
-            _prefix.map(p => {
-              let re = p instanceof RegExp ? // RegExp in Array?
-                p :
-                new RegExp(str2Regex(p))
+        let match = (_prefix instanceof RegExp ? [[_prefix.exec(m.text), _prefix]] : Array.isArray(_prefix) ? _prefix.map(p => {
+              let re = p instanceof RegExp ? p : new RegExp(str2Regex(p))
               return [re.exec(m.text), re]
-            }) :
-            typeof _prefix === 'string' ? // String?
-              [[new RegExp(str2Regex(_prefix)).exec(m.text), new RegExp(str2Regex(_prefix))]] :
-              [[[], new RegExp]]
-        ).find(p => p[1])
+         }) : typeof _prefix === 'string' ? [[new RegExp(str2Regex(_prefix)).exec(m.text), new RegExp(str2Regex(_prefix))]] : [[[], new RegExp]]).find(p => p[1])
         if (typeof plugin.before === 'function') if (await plugin.before.call(this, m, {
-          match, conn: this, participants, groupMetadata, user, Func, Key, bot, isROwner, isRAdmin, isAdmin, isBotAdmin, isPrems, users, setting, chatUpdate,
+          match, conn: this, participants, groupMetadata, user, Scraper, Func, Key, bot, isROwner, isRAdmin, isAdmin, isBotAdmin, isPrems, users, setting, chatUpdate,
         })) continue
         if (typeof plugin !== 'function') continue
         if ((usedPrefix = (match[0] || '')[0])) {
@@ -262,7 +254,7 @@ module.exports = {
             continue // If the level has not been reached
           }
           let extra = {
-            match, usedPrefix, noPrefix, _args, args, command, text, conn: this, Func, Key, participants, groupMetadata, user, bot, isROwner, isRAdmin, isAdmin, isBotAdmin, isPrems, groupSet, users, setting, chatUpdate,
+            match, usedPrefix, noPrefix, _args, args, command, text, conn: this, Func, Key, participants, Scraper, groupMetadata, user, bot, isROwner, isRAdmin, isAdmin, isBotAdmin, isPrems, groupSet, users, setting, chatUpdate,
           }
           try {
             await plugin.call(this, m, extra)
