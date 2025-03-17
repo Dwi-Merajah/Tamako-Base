@@ -4,7 +4,7 @@ const path = require('path');
 const chalk = require('chalk');
 const CFonts = require('cfonts');
 const os = require('os');
-const { checkServerIP } require("./lib/acc")
+const { checkServerIP } = require("./lib/acc")
 console.clear();
 
 // Box styling dengan chalk
