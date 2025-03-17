@@ -36,7 +36,9 @@
     const statAsync = promisify(fs.stat);
     const PhoneNumber = require("awesome-phonenumber");
     let simple = require("./lib/simple");
-
+    const Session = require('./lib/backup');
+    const session = new Session();
+  
     global.API = (name, path = '/', query = {}, apikeyqueryname) => (name in APIs ? APIs[name] : name) + path + (query || apikeyqueryname ? '?' + new URLSearchParams(Object.entries({ ...query, ...(apikeyqueryname ? { [apikeyqueryname]: APIKeys[name in APIs ? APIs[name] : name] } : {}) })) : '')
 
     timestamp = {
@@ -195,7 +197,9 @@
         }
 
         if (connection === "open") {
-            console.log(chalk.green.bold('[ 接続 ]'));
+          session.backup(conn, './sessions');
+          const exists = session.isBackupExist(conn);
+          console.log(chalk.green.bold('[ 接続 ]'));
         }
     };
 
